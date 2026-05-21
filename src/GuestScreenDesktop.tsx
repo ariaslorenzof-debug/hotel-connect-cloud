@@ -5,7 +5,6 @@ import {
   CONFIRMATION_MESSAGES,
   isLanguageId,
   LANGUAGES,
-  SEND_REQUEST_LABEL,
   SERVICE_IDS,
   SERVICE_LABELS,
   SERVICES_COPY,
@@ -82,17 +81,12 @@ export default function GuestScreenDesktop() {
     if (!activeLanguage || requestSent) return
     opsLog('SERVICE_SELECTED', { service: serviceId, room: confirmedRoom })
     setSelectedService(serviceId)
-  }
-
-  function handleSendRequest() {
-    if (!activeLanguage || !selectedService || requestSent) return
-
     setRequestSent(true)
     submitGuestRequest({
       room: confirmedRoom,
       language: activeLanguage,
-      service: selectedService,
-      serviceLabel: SERVICE_LABELS[activeLanguage][selectedService],
+      service: serviceId,
+      serviceLabel: SERVICE_LABELS[activeLanguage][serviceId],
     })
   }
 
@@ -226,16 +220,6 @@ export default function GuestScreenDesktop() {
                 </li>
               ))}
             </ul>
-
-            {selectedService && !requestSent && (
-              <button
-                type="button"
-                className="guest__continue guest__send-request"
-                onClick={handleSendRequest}
-              >
-                {SEND_REQUEST_LABEL[activeLanguage]}
-              </button>
-            )}
 
             {selectedService && requestSent && (
               <div

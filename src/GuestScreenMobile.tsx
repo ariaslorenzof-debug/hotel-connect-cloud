@@ -5,7 +5,6 @@ import {
   CONFIRMATION_MESSAGES,
   isLanguageId,
   LANGUAGES,
-  SEND_REQUEST_LABEL,
   SERVICE_IDS,
   SERVICE_LABELS,
   SERVICES_COPY,
@@ -63,17 +62,12 @@ export default function GuestScreenMobile() {
     if (!activeLanguage || requestSent) return
     opsLog('SERVICE_SELECTED', { service: serviceId, room: confirmedRoom })
     setSelectedService(serviceId)
-  }
-
-  function handleSendRequest() {
-    if (!activeLanguage || !selectedService || requestSent) return
-
     setRequestSent(true)
     submitGuestRequest({
       room: confirmedRoom,
       language: activeLanguage,
-      service: selectedService,
-      serviceLabel: SERVICE_LABELS[activeLanguage][selectedService],
+      service: serviceId,
+      serviceLabel: SERVICE_LABELS[activeLanguage][serviceId],
     })
   }
 
@@ -181,16 +175,6 @@ export default function GuestScreenMobile() {
                 </li>
               ))}
             </ul>
-
-            {selectedService && !requestSent && (
-              <button
-                type="button"
-                className="guest-m__btn guest-m__btn--primary guest-m__btn--send"
-                onClick={handleSendRequest}
-              >
-                {SEND_REQUEST_LABEL[activeLanguage]}
-              </button>
-            )}
 
             {selectedService && requestSent && (
               <div className="guest-m__confirm" role="status" aria-live="polite">
