@@ -132,10 +132,6 @@ body:has(.guest-m),
   background: #333;
 }
 
-.guest-m__btn--send {
-  margin-top: 0.25rem;
-}
-
 .guest-m__btn--back {
   width: auto;
   min-height: 0;

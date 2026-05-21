@@ -132,13 +132,6 @@ export const CONFIRMATION_MESSAGES: Record<
   },
 }
 
-export const SEND_REQUEST_LABEL: Record<LanguageId, string> = {
-  es: 'Enviar solicitud',
-  en: 'Send request',
-  de: 'Anfrage senden',
-  fr: 'Envoyer la demande',
-}
-
 export const SERVICES_COPY: Record<
   LanguageId,
   { title: string; lead: string; back: string }

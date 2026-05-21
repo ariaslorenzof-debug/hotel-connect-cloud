@@ -193,35 +193,7 @@ export default function GuestScreenDesktop() {
               {servicesCopy.back}
             </button>
 
-            <p className="guest__eyebrow">Guest services</p>
-            <h2 id="guest-services" className="guest__welcome">
-              {servicesCopy.title}
-            </h2>
-            <p className="guest__lead">{servicesCopy.lead}</p>
-
-            <ul className="guest__services" role="list">
-              {SERVICE_IDS.map((serviceId) => (
-                <li key={serviceId}>
-                  <button
-                    type="button"
-                    className={`guest__service${
-                      selectedService === serviceId
-                        ? ' guest__service--selected'
-                        : ''
-                    }`}
-                    aria-pressed={selectedService === serviceId}
-                    onClick={() => handleServiceSelect(serviceId)}
-                    disabled={requestSent}
-                  >
-                    <span className="guest__service-label">
-                      {SERVICE_LABELS[activeLanguage][serviceId]}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            {selectedService && requestSent && (
+            {requestSent && selectedService ? (
               <div
                 ref={confirmationRef}
                 className="guest__confirmation"
@@ -233,6 +205,30 @@ export default function GuestScreenDesktop() {
                   {CONFIRMATION_MESSAGES[activeLanguage][selectedService]}
                 </p>
               </div>
+            ) : (
+              <>
+                <p className="guest__eyebrow">Guest services</p>
+                <h2 id="guest-services" className="guest__welcome">
+                  {servicesCopy.title}
+                </h2>
+                <p className="guest__lead">{servicesCopy.lead}</p>
+
+                <ul className="guest__services" role="list">
+                  {SERVICE_IDS.map((serviceId) => (
+                    <li key={serviceId}>
+                      <button
+                        type="button"
+                        className="guest__service"
+                        onClick={() => handleServiceSelect(serviceId)}
+                      >
+                        <span className="guest__service-label">
+                          {SERVICE_LABELS[activeLanguage][serviceId]}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </section>
         )}

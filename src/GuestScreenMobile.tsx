@@ -153,33 +153,31 @@ export default function GuestScreenMobile() {
             >
               {servicesCopy.back}
             </button>
-            <h2 id="guest-m-svc" className="guest-m__heading">
-              {servicesCopy.title}
-            </h2>
-            <p className="guest-m__text">{servicesCopy.lead}</p>
-
-            <ul className="guest-m__list">
-              {SERVICE_IDS.map((serviceId) => (
-                <li key={serviceId}>
-                  <button
-                    type="button"
-                    className={`guest-m__btn${
-                      selectedService === serviceId ? ' guest-m__btn--selected' : ''
-                    }`}
-                    aria-pressed={selectedService === serviceId}
-                    onClick={() => handleServiceSelect(serviceId)}
-                    disabled={requestSent}
-                  >
-                    {SERVICE_LABELS[activeLanguage][serviceId]}
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            {selectedService && requestSent && (
+            {requestSent && selectedService ? (
               <div className="guest-m__confirm" role="status" aria-live="polite">
                 <p>{CONFIRMATION_MESSAGES[activeLanguage][selectedService]}</p>
               </div>
+            ) : (
+              <>
+                <h2 id="guest-m-svc" className="guest-m__heading">
+                  {servicesCopy.title}
+                </h2>
+                <p className="guest-m__text">{servicesCopy.lead}</p>
+
+                <ul className="guest-m__list">
+                  {SERVICE_IDS.map((serviceId) => (
+                    <li key={serviceId}>
+                      <button
+                        type="button"
+                        className="guest-m__btn"
+                        onClick={() => handleServiceSelect(serviceId)}
+                      >
+                        {SERVICE_LABELS[activeLanguage][serviceId]}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </section>
         )}
