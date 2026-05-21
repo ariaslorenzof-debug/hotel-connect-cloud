@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { parseGuestRoomFromPath } from './GuestScreen.tsx'
 import { useIncidents } from './context/IncidentsProvider.tsx'
 import {
   CONFIRMATION_MESSAGES,
@@ -28,9 +29,10 @@ function scheduleConfirmationScroll(element: HTMLElement) {
 
 export default function GuestScreenDesktop() {
   const { submitGuestRequest } = useIncidents()
-  const [step, setStep] = useState<GuestStep>('room')
-  const [roomNumber, setRoomNumber] = useState('')
-  const [confirmedRoom, setConfirmedRoom] = useState('')
+  const urlRoom = parseGuestRoomFromPath()
+  const [step, setStep] = useState<GuestStep>(() => (urlRoom ? 'language' : 'room'))
+  const [roomNumber, setRoomNumber] = useState(() => urlRoom ?? '')
+  const [confirmedRoom, setConfirmedRoom] = useState(() => urlRoom ?? '')
   const [language, setLanguage] = useState<string | null>(null)
   const [selectedService, setSelectedService] = useState<ServiceId | null>(null)
   const [requestSent, setRequestSent] = useState(false)
