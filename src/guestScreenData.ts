@@ -1,5 +1,3 @@
-export type GuestStep = 'room' | 'language' | 'services'
-
 export type LanguageId = 'es' | 'en' | 'de' | 'fr'
 
 export type ServiceId =
@@ -132,29 +130,43 @@ export const CONFIRMATION_MESSAGES: Record<
   },
 }
 
-export const SERVICES_COPY: Record<
+export const GUEST_PAGE_COPY: Record<
   LanguageId,
-  { title: string; lead: string; back: string }
+  {
+    eyebrow: string
+    roomLabel: string
+    languageTitle: string
+    servicesTitle: string
+    servicesHint: string
+  }
 > = {
   es: {
-    title: 'Elige un servicio',
-    lead: 'Selecciona lo que necesitas y el equipo del hotel te atenderá.',
-    back: '← Cambiar idioma',
+    eyebrow: 'Servicios para huéspedes',
+    roomLabel: 'Habitación',
+    languageTitle: 'Idioma',
+    servicesTitle: 'Servicios',
+    servicesHint: 'Selecciona un idioma y pulsa el servicio que necesitas.',
   },
   en: {
-    title: 'Choose a service',
-    lead: 'Select what you need and the hotel team will assist you.',
-    back: '← Change language',
+    eyebrow: 'Guest services',
+    roomLabel: 'Room',
+    languageTitle: 'Language',
+    servicesTitle: 'Services',
+    servicesHint: 'Choose a language, then tap the service you need.',
   },
   de: {
-    title: 'Service wählen',
-    lead: 'Wählen Sie, was Sie benötigen — unser Team hilft Ihnen gerne.',
-    back: '← Sprache ändern',
+    eyebrow: 'Gästeservice',
+    roomLabel: 'Zimmer',
+    languageTitle: 'Sprache',
+    servicesTitle: 'Services',
+    servicesHint: 'Wählen Sie eine Sprache und tippen Sie auf den gewünschten Service.',
   },
   fr: {
-    title: 'Choisir un service',
-    lead: 'Sélectionnez ce dont vous avez besoin — l’équipe de l’hôtel vous aidera.',
-    back: '← Changer de langue',
+    eyebrow: 'Services invités',
+    roomLabel: 'Chambre',
+    languageTitle: 'Langue',
+    servicesTitle: 'Services',
+    servicesHint: 'Choisissez une langue, puis appuyez sur le service souhaité.',
   },
 }
 

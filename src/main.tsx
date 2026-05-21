@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { IncidentsProvider } from './context/IncidentsProvider.tsx'
 import './index.css'
 import App from './App.tsx'
-import GuestScreen, { isGuestPath } from './GuestScreen.tsx'
+import GuestScreen from './GuestScreen.tsx'
+import { isGuestPath } from './guestScreenPath.ts'
 
 function Root() {
   const [guestView, setGuestView] = useState(isGuestPath)
