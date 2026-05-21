@@ -1,0 +1,175 @@
+/* Guest mobile — plain layout only (<768px) */
+
+html:has(.guest-m),
+body:has(.guest-m),
+#root:has(.guest-m) {
+  height: auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.guest-m {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  margin: 0;
+  padding: max(1rem, env(safe-area-inset-top, 0px)) 1rem
+    max(1.25rem, env(safe-area-inset-bottom, 0px));
+  background: #000;
+  color: #fff;
+  font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.guest-m *,
+.guest-m *::before,
+.guest-m *::after {
+  box-sizing: border-box;
+}
+
+.guest-m__header {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  text-align: center;
+}
+
+.guest-m__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.guest-m__main {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.guest-m__section {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.guest-m__section > * + * {
+  margin-top: 0.75rem;
+}
+
+.guest-m__heading {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.guest-m__text {
+  margin: 0;
+  color: #ccc;
+}
+
+.guest-m__label {
+  display: block;
+  margin: 0;
+  font-size: 0.875rem;
+  color: #aaa;
+}
+
+.guest-m__input {
+  display: block;
+  width: 100%;
+  min-height: 3.25rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #111;
+  color: #fff;
+  font: inherit;
+}
+
+.guest-m__input:focus {
+  outline: 2px solid #fff;
+  outline-offset: 0;
+}
+
+.guest-m__btn {
+  display: block;
+  width: 100%;
+  min-height: 3.25rem;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #666;
+  border-radius: 4px;
+  background: #222;
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.guest-m__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.guest-m__btn--primary {
+  border-color: #fff;
+  background: #fff;
+  color: #000;
+}
+
+.guest-m__btn--primary:disabled {
+  background: #555;
+  border-color: #555;
+  color: #999;
+}
+
+.guest-m__btn--selected {
+  border-color: #fff;
+  background: #333;
+}
+
+.guest-m__btn--send {
+  margin-top: 0.25rem;
+}
+
+.guest-m__btn--back {
+  width: auto;
+  min-height: 0;
+  padding: 0.5rem 0;
+  border: none;
+  background: none;
+  color: #ccc;
+  font-weight: 500;
+  text-align: left;
+}
+
+.guest-m__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guest-m__list > li + li {
+  margin-top: 0.65rem;
+}
+
+.guest-m__confirm {
+  margin: 0.75rem 0 0;
+  padding: 1rem;
+  border: 1px solid #444;
+  background: #111;
+}
+
+.guest-m__confirm p {
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .guest-m {
+    display: none;
+  }
+}
