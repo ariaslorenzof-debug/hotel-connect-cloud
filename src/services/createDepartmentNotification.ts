@@ -19,14 +19,23 @@ export function buildDepartmentNotificationMessage(
   room: string,
   service: string,
   department: string,
+  optionalMessage?: string,
+  referenceNumber?: string,
 ): string {
-  return [
+  const lines = [
     'Nueva solicitud hotelera',
     `Habitación: ${room}`,
     `Servicio: ${service}`,
     `Departamento: ${department}`,
     'Estado: Pendiente',
-  ].join('\n')
+  ]
+  if (optionalMessage?.trim()) {
+    lines.push(`Detalle: ${optionalMessage.trim()}`)
+  }
+  if (referenceNumber) {
+    lines.push(`Referencia: ${referenceNumber}`)
+  }
+  return lines.join('\n')
 }
 
 export function targetDepartmentLabel(department: DepartmentId): string {
@@ -80,6 +89,8 @@ export function createDepartmentNotification(
       incident.room,
       incident.serviceCategory ?? guestService,
       targetDepartment,
+      incident.guestMessage,
+      incident.id,
     ),
     timestamp,
     deliveryStatus: 'prepared',

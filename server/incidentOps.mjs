@@ -98,11 +98,14 @@ export function departmentForGuestService(service) {
     case 'towels':
     case 'cleaning':
     case 'pillows':
-    case 'blankets':
+    case 'blanket':
+    case 'minibar':
       return 'housekeeping'
     case 'air-conditioning':
     case 'maintenance':
       return 'maintenance'
+    case 'noise':
+      return 'security'
     case 'other':
       return 'reception'
     default:
@@ -144,6 +147,14 @@ export function createGuestIncident(payload, existing) {
       ? payload.department
       : departmentForGuestService(payload.service)
   const status = payload.status === 'pending' ? 'pending' : 'pending'
+  const optionalMessage =
+    typeof payload.optionalMessage === 'string'
+      ? payload.optionalMessage.trim()
+      : ''
+  const descriptionBase = `Guest request — ${payload.serviceLabel} · ${languageLabel}`
+  const description = optionalMessage
+    ? `${descriptionBase} · ${optionalMessage}`
+    : descriptionBase
 
   return {
     id: nextIncidentId(existing),
@@ -154,11 +165,12 @@ export function createGuestIncident(payload, existing) {
     priorityColorKey: 'normal',
     status,
     time: formatIncidentTime(new Date(createdAt)),
-    description: `Guest request — ${payload.serviceLabel} · ${languageLabel}`,
+    description,
     source: 'guest',
     language: payload.language,
     service: payload.service,
     createdAt,
+    ...(optionalMessage ? { guestMessage: optionalMessage } : {}),
   }
 }
 
@@ -167,13 +179,26 @@ export function createGuestIncident(payload, existing) {
  * @param {string} serviceLabel
  * @param {DepartmentId} department
  */
-export function buildTelegramMessage(room, serviceLabel, department) {
+export function buildTelegramMessage(
+  room,
+  serviceLabel,
+  department,
+  optionalMessage,
+  referenceNumber,
+) {
   const departmentLabel = DEPARTMENT_LABELS[department] ?? department
-  return [
+  const lines = [
     'Nueva solicitud hotelera',
     `Habitación: ${room}`,
     `Servicio: ${serviceLabel}`,
     `Departamento: ${departmentLabel}`,
     'Estado: Pendiente',
-  ].join('\n')
+  ]
+  if (optionalMessage) {
+    lines.push(`Detalle: ${optionalMessage}`)
+  }
+  if (referenceNumber) {
+    lines.push(`Referencia: ${referenceNumber}`)
+  }
+  return lines.join('\n')
 }

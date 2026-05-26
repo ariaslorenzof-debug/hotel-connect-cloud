@@ -55,6 +55,8 @@ export interface Incident {
   language?: string
   service?: string
   createdAt?: number
+  /** Optional free-text detail from the guest QR flow. */
+  guestMessage?: string
   /** Reserved for themed priority badges (not wired yet). */
   priorityColorKey?: Priority
   notifications?: IncidentNotifications

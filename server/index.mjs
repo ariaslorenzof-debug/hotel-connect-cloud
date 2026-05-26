@@ -108,6 +108,8 @@ async function handleGuestRequest(req, res) {
         : Date.now()
     const serviceLabel =
       typeof body.serviceLabel === 'string' ? body.serviceLabel.trim() : service
+    const optionalMessage =
+      typeof body.optionalMessage === 'string' ? body.optionalMessage.trim() : ''
 
     opsLog('GUEST_REQUEST_POST_RECEIVED', {
       room,
@@ -116,6 +118,7 @@ async function handleGuestRequest(req, res) {
       department,
       status,
       createdAt,
+      optionalMessage: optionalMessage || undefined,
     })
 
     if (!room || !service || !language) {
@@ -132,6 +135,7 @@ async function handleGuestRequest(req, res) {
         department,
         status,
         createdAt,
+        ...(optionalMessage ? { optionalMessage } : {}),
       },
       incidents,
     )
@@ -151,6 +155,8 @@ async function handleGuestRequest(req, res) {
       incident.room,
       serviceLabel,
       incident.department,
+      optionalMessage,
+      incident.id,
     )
 
     const telegram = await sendHotelTelegram(telegramMessage)

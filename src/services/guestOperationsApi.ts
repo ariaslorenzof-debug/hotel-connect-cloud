@@ -37,6 +37,7 @@ export async function postGuestRequest(
     department: payload.department,
     status: payload.status,
     createdAt: payload.createdAt,
+    optionalMessage: payload.optionalMessage,
   })
 
   let response: Response

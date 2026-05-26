@@ -13,6 +13,7 @@ import { INITIAL_INCIDENTS, type Incident } from '../data/dashboard'
 import type { DepartmentNotification } from '../data/departmentNotification'
 import {
   buildGuestRequestPostBody,
+  createGuestIncident,
   type GuestRequestPayload,
 } from '../services/createGuestIncident'
 import { createDepartmentNotification } from '../services/createDepartmentNotification'
@@ -31,7 +32,7 @@ const INCIDENTS_POLL_MS = 4000
 type IncidentsContextValue = {
   incidents: Incident[]
   departmentNotifications: DepartmentNotification[]
-  submitGuestRequest: (payload: GuestRequestPayload) => void
+  submitGuestRequest: (payload: GuestRequestPayload) => Promise<Incident | null>
   getDepartmentNotificationForIncident: (
     incidentId: string,
   ) => DepartmentNotification | undefined
@@ -207,33 +208,46 @@ export function IncidentsProvider({ children }: { children: ReactNode }) {
   )
 
   const submitGuestRequest = useCallback(
-    (payload: GuestRequestPayload) => {
+    async (payload: GuestRequestPayload): Promise<Incident | null> => {
       const postBody = buildGuestRequestPostBody(payload)
 
-      void postGuestRequest(postBody)
-        .then(({ incident, telegram }) => {
-          setIncidents((current) => {
-            if (current.some((row) => row.id === incident.id)) {
-              return current
-            }
-            markIncidentsLive([incident.id], setLiveIncidentIds)
-            opsLog('DASHBOARD_INCIDENT_AVAILABLE', { incidentId: incident.id })
-            return [incident, ...current]
-          })
+      try {
+        const { incident, telegram } = await postGuestRequest(postBody)
 
-          recordGuestNotification(
-            incident,
-            telegramDeliveryStatus(telegram.status),
-            telegram.status === 'sent' ? 'telegram' : 'none',
-          )
+        setIncidents((current) => {
+          if (current.some((row) => row.id === incident.id)) {
+            return current
+          }
+          markIncidentsLive([incident.id], setLiveIncidentIds)
+          opsLog('DASHBOARD_INCIDENT_AVAILABLE', { incidentId: incident.id })
+          return [incident, ...current]
         })
-        .catch((error: unknown) => {
-          opsLog('POST_GUEST_REQUEST_FAILED', {
-            room: postBody.room,
-            service: postBody.service,
-            error: error instanceof Error ? error.message : 'unknown',
-          })
+
+        recordGuestNotification(
+          incident,
+          telegramDeliveryStatus(telegram.status),
+          telegram.status === 'sent' ? 'telegram' : 'none',
+        )
+
+        return incident
+      } catch (error: unknown) {
+        opsLog('POST_GUEST_REQUEST_FAILED', {
+          room: postBody.room,
+          service: postBody.service,
+          error: error instanceof Error ? error.message : 'unknown',
         })
+
+        let fallback: Incident | null = null
+        setIncidents((current) => {
+          fallback = createGuestIncident(payload, current)
+          markIncidentsLive([fallback.id], setLiveIncidentIds)
+          return [fallback, ...current]
+        })
+        if (fallback) {
+          recordGuestNotification(fallback, 'prepared', 'none')
+        }
+        return fallback
+      }
     },
     [recordGuestNotification],
   )

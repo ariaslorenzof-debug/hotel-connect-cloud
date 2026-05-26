@@ -3,10 +3,12 @@ import type { DepartmentId, Incident } from '../data/dashboard'
 export type GuestServiceId =
   | 'towels'
   | 'cleaning'
-  | 'air-conditioning'
-  | 'maintenance'
   | 'pillows'
-  | 'blankets'
+  | 'blanket'
+  | 'air-conditioning'
+  | 'noise'
+  | 'maintenance'
+  | 'minibar'
   | 'other'
 
 export type GuestLanguageId = 'es' | 'en' | 'de' | 'fr'
@@ -16,6 +18,7 @@ export type GuestRequestPayload = {
   language: GuestLanguageId
   service: GuestServiceId
   serviceLabel: string
+  optionalMessage?: string
 }
 
 export type GuestRequestPostBody = {
@@ -26,11 +29,13 @@ export type GuestRequestPostBody = {
   status: 'pending'
   createdAt: number
   serviceLabel: string
+  optionalMessage?: string
 }
 
 export function buildGuestRequestPostBody(
   payload: GuestRequestPayload,
 ): GuestRequestPostBody {
+  const optionalMessage = payload.optionalMessage?.trim()
   return {
     room: payload.room,
     language: payload.language,
@@ -39,6 +44,7 @@ export function buildGuestRequestPostBody(
     status: 'pending',
     createdAt: Date.now(),
     serviceLabel: payload.serviceLabel,
+    ...(optionalMessage ? { optionalMessage } : {}),
   }
 }
 
@@ -54,11 +60,14 @@ export function departmentForGuestService(service: GuestServiceId): DepartmentId
     case 'towels':
     case 'cleaning':
     case 'pillows':
-    case 'blankets':
+    case 'blanket':
+    case 'minibar':
       return 'housekeeping'
     case 'air-conditioning':
     case 'maintenance':
       return 'maintenance'
+    case 'noise':
+      return 'security'
     case 'other':
       return 'reception'
   }
@@ -80,15 +89,27 @@ function formatIncidentTime(date: Date): string {
   })
 }
 
+function buildGuestDescription(
+  serviceLabel: string,
+  languageLabel: string,
+  optionalMessage?: string,
+): string {
+  const base = `Guest request — ${serviceLabel} · ${languageLabel}`
+  if (!optionalMessage?.trim()) return base
+  return `${base} · ${optionalMessage.trim()}`
+}
+
 export function createGuestIncident(
   payload: GuestRequestPayload,
   existing: Incident[],
 ): Incident {
   const createdAt = Date.now()
   const languageLabel = LANGUAGE_LABELS[payload.language]
+  const optionalMessage = payload.optionalMessage?.trim()
+  const referenceNumber = nextIncidentId(existing)
 
   return {
-    id: nextIncidentId(existing),
+    id: referenceNumber,
     room: payload.room,
     department: departmentForGuestService(payload.service),
     serviceCategory: payload.serviceLabel,
@@ -96,10 +117,15 @@ export function createGuestIncident(
     priorityColorKey: 'normal',
     status: 'pending',
     time: formatIncidentTime(new Date(createdAt)),
-    description: `Guest request — ${payload.serviceLabel} · ${languageLabel}`,
+    description: buildGuestDescription(
+      payload.serviceLabel,
+      languageLabel,
+      optionalMessage,
+    ),
     source: 'guest',
     language: payload.language,
     service: payload.service,
     createdAt,
+    guestMessage: optionalMessage || undefined,
   }
 }
