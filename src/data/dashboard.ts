@@ -76,7 +76,7 @@ export interface Department {
 export const DEPARTMENTS: Department[] = [
   {
     id: 'housekeeping',
-    label: 'Housekeeping',
+    label: 'Limpieza',
     online: true,
     staffCount: 14,
     activeTasks: 6,
@@ -84,7 +84,7 @@ export const DEPARTMENTS: Department[] = [
   },
   {
     id: 'maintenance',
-    label: 'Maintenance',
+    label: 'Mantenimiento',
     online: true,
     staffCount: 8,
     activeTasks: 3,
@@ -92,7 +92,7 @@ export const DEPARTMENTS: Department[] = [
   },
   {
     id: 'reception',
-    label: 'Reception',
+    label: 'Recepción',
     online: true,
     staffCount: 6,
     activeTasks: 11,
@@ -100,7 +100,7 @@ export const DEPARTMENTS: Department[] = [
   },
   {
     id: 'security',
-    label: 'Security',
+    label: 'Seguridad',
     online: true,
     staffCount: 5,
     activeTasks: 2,
@@ -116,7 +116,7 @@ export const INITIAL_INCIDENTS: Incident[] = [
     priority: 'critical',
     status: 'in_progress',
     time: '14:02',
-    description: 'HVAC failure — suite temperature above threshold',
+    description: 'Fallo de climatización — temperatura de la suite por encima del umbral',
   },
   {
     id: 'INC-2839',
@@ -125,7 +125,7 @@ export const INITIAL_INCIDENTS: Incident[] = [
     priority: 'high',
     status: 'open',
     time: '13:48',
-    description: 'VIP turndown delayed — guest arrival in 45 min',
+    description: 'Servicio VIP retrasado — llegada del huésped en 45 min',
   },
   {
     id: 'INC-2836',
@@ -134,7 +134,7 @@ export const INITIAL_INCIDENTS: Incident[] = [
     priority: 'medium',
     status: 'in_progress',
     time: '13:31',
-    description: 'Group check-in queue exceeding SLA target',
+    description: 'Cola de check-in de grupo supera el objetivo SLA',
   },
   {
     id: 'INC-2834',
@@ -143,7 +143,7 @@ export const INITIAL_INCIDENTS: Incident[] = [
     priority: 'high',
     status: 'escalated',
     time: '13:12',
-    description: 'Access panel intermittent — parking level 3',
+    description: 'Panel de acceso intermitente — aparcamiento nivel 3',
   },
   {
     id: 'INC-2831',
@@ -152,7 +152,7 @@ export const INITIAL_INCIDENTS: Incident[] = [
     priority: 'low',
     status: 'resolved',
     time: '12:55',
-    description: 'Extra amenities delivered — request closed',
+    description: 'Amenities extra entregados — solicitud cerrada',
   },
   {
     id: 'INC-2828',
@@ -161,7 +161,7 @@ export const INITIAL_INCIDENTS: Incident[] = [
     priority: 'medium',
     status: 'open',
     time: '12:40',
-    description: 'Shower pressure low — engineering dispatched',
+    description: 'Presión de ducha baja — mantenimiento enviado',
   },
   {
     id: 'INC-2825',
@@ -170,7 +170,7 @@ export const INITIAL_INCIDENTS: Incident[] = [
     priority: 'low',
     status: 'resolved',
     time: '12:18',
-    description: 'Late checkout approved — billing updated',
+    description: 'Salida tardía aprobada — facturación actualizada',
   },
 ]
 

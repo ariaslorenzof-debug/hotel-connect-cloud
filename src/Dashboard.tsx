@@ -517,7 +517,7 @@ export default function Dashboard() {
         </article>
       </section>
 
-      <section className="dash__panels" aria-label="Rankings">
+      <section className="dash__panels" aria-label="Clasificaciones">
         <article className="dash__panel">
           <h2 className="dash__panel-title">Departamentos — tiempo medio</h2>
           {deptRanking.length === 0 ? (

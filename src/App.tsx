@@ -13,30 +13,36 @@ import './App.css'
 import Dashboard from './Dashboard'
 
 const DEPARTMENT_LABELS: Record<DepartmentId, string> = {
-  housekeeping: 'Housekeeping',
-  maintenance: 'Maintenance',
-  reception: 'Reception',
-  security: 'Security',
+  housekeeping: 'Limpieza',
+  maintenance: 'Mantenimiento',
+  reception: 'Recepción',
+  security: 'Seguridad',
 }
 
 const PRIORITY_LABELS: Record<Priority, string> = {
-  critical: 'Critical',
-  high: 'High',
+  critical: 'Crítica',
+  high: 'Alta',
   normal: 'Normal',
-  medium: 'Medium',
-  low: 'Low',
+  medium: 'Media',
+  low: 'Baja',
 }
 
 const STATUS_LABELS: Record<IncidentStatus, string> = {
-  pending: 'Pending',
-  open: 'Open',
-  in_progress: 'In Progress',
-  escalated: 'Escalated',
-  resolved: 'Resolved',
+  pending: 'Pendiente',
+  open: 'Abierta',
+  in_progress: 'En proceso',
+  escalated: 'Escalada',
+  resolved: 'Resuelta',
+}
+
+const LOAD_LABELS: Record<'low' | 'normal' | 'high', string> = {
+  low: 'Baja',
+  normal: 'Normal',
+  high: 'Alta',
 }
 
 function formatClock(date: Date): string {
-  return date.toLocaleTimeString('en-US', {
+  return date.toLocaleTimeString('es-ES', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -45,7 +51,7 @@ function formatClock(date: Date): string {
 }
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('es-ES', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -55,17 +61,17 @@ function formatDate(date: Date): string {
 
 function formatFeedAge(createdAt: number): string {
   const seconds = Math.floor((Date.now() - createdAt) / 1000)
-  if (seconds < 45) return 'Just now'
+  if (seconds < 45) return 'Ahora mismo'
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 60) return `hace ${minutes} min`
   const hours = Math.floor(minutes / 60)
-  return `${hours}h ago`
+  return `hace ${hours} h`
 }
 
 const SEED_ACTIVITY = [
-  { id: 'seed-1', age: '2m ago', text: 'Housekeeping assigned to room 805' },
-  { id: 'seed-2', age: '5m ago', text: 'Security patrol routed to P3' },
-  { id: 'seed-3', age: '8m ago', text: 'Reception SLA alert cleared' },
+  { id: 'seed-1', age: 'hace 2 min', text: 'Limpieza asignada a la habitación 805' },
+  { id: 'seed-2', age: 'hace 5 min', text: 'Patrulla de seguridad desviada a P3' },
+  { id: 'seed-3', age: 'hace 8 min', text: 'Alerta SLA de recepción resuelta' },
 ] as const
 
 function KpiCard({
@@ -89,7 +95,7 @@ function KpiCard({
       <header className="kpi-card__header">
         <span className="kpi-card__label">{label}</span>
         {pulse && (
-          <span className="live-dot" title="Live metric">
+          <span className="live-dot" title="Métrica en vivo">
             <span className="live-dot__ring" />
             <span className="live-dot__core" />
           </span>
@@ -124,21 +130,21 @@ function DepartmentCard({
         <h3 className="dept-card__name">{label}</h3>
         <span className={`dept-status ${online ? 'dept-status--online' : 'dept-status--offline'}`}>
           <span className="dept-status__dot" />
-          {online ? 'Online' : 'Offline'}
+          {online ? 'En línea' : 'Desconectado'}
         </span>
       </div>
       <dl className="dept-card__stats">
         <div>
-          <dt>Staff on duty</dt>
+          <dt>Personal de servicio</dt>
           <dd>{staffCount}</dd>
         </div>
         <div>
-          <dt>Active tasks</dt>
+          <dt>Tareas activas</dt>
           <dd>{activeTasks}</dd>
         </div>
         <div>
-          <dt>Load</dt>
-          <dd className={`dept-load dept-load--${load}`}>{load}</dd>
+          <dt>Carga</dt>
+          <dd className={`dept-load dept-load--${load}`}>{LOAD_LABELS[load]}</dd>
         </div>
       </dl>
     </article>
@@ -224,8 +230,8 @@ function App() {
           id: incident.id,
           age: incident.createdAt
             ? formatFeedAge(incident.createdAt)
-            : 'Just now',
-          text: `Room ${incident.room} — ${incident.serviceCategory ?? 'Guest request'} queued for ${DEPARTMENT_LABELS[incident.department]}`,
+            : 'Ahora mismo',
+          text: `Hab. ${incident.room} — ${incident.serviceCategory ?? 'Solicitud de huésped'} en cola para ${DEPARTMENT_LABELS[incident.department]}`,
         })),
     [incidents],
   )
@@ -247,7 +253,7 @@ function App() {
             <span className="brand-mark__inner">HC</span>
           </div>
           <div>
-            <p className="topbar__eyebrow">Operations Center</p>
+            <p className="topbar__eyebrow">Centro de operaciones</p>
             <h1 className="topbar__title">Hotel Connect</h1>
           </div>
         </div>
@@ -258,7 +264,7 @@ function App() {
               <span className="live-dot__ring" />
               <span className="live-dot__core" />
             </span>
-            All systems operational
+            Todos los sistemas operativos
           </span>
         </div>
 
@@ -271,31 +277,31 @@ function App() {
       </header>
 
       <main className="dashboard__main">
-        <section className="kpi-section" aria-label="Key performance indicators">
+        <section className="kpi-section" aria-label="Indicadores clave">
           <KpiCard
-            label="Active incidents"
+            label="Incidencias activas"
             value={activeIncidents}
-            trend="+2 since last hour"
+            trend="+2 en la última hora"
             accent="gold"
             pulse
           />
           <KpiCard
-            label="Resolved today"
+            label="Resueltas hoy"
             value={resolvedToday}
-            trend="↑ 18% vs yesterday"
+            trend="↑ 18 % respecto a ayer"
             accent="emerald"
           />
           <KpiCard
-            label="Avg response time"
+            label="Tiempo medio de respuesta"
             value={`${responseMinutes}m ${String(responseSeconds).padStart(2, '0')}s`}
-            trend="Within SLA target"
+            trend="Dentro del objetivo SLA"
             accent="cyan"
             pulse
           />
           <KpiCard
-            label="Departments online"
+            label="Departamentos en línea"
             value={`${KPI_BASE.departmentsOnline}/${KPI_BASE.departmentsTotal}`}
-            trend="Full coverage"
+            trend="Cobertura completa"
             accent="violet"
           />
         </section>
@@ -305,23 +311,23 @@ function App() {
             <div className="panel__header">
               <div>
                 <h2 id="incidents-heading" className="panel__title">
-                  Live incidents
+                  Incidencias en vivo
                 </h2>
-                <p className="panel__subtitle">Real-time operational queue</p>
+                <p className="panel__subtitle">Cola operativa en tiempo real</p>
               </div>
-              <span className="panel__badge">{activeIncidents} active records</span>
+              <span className="panel__badge">{activeIncidents} registros activos</span>
             </div>
 
             <div className="table-wrap">
               <table className="incidents-table">
                 <thead>
                   <tr>
-                    <th scope="col">Room</th>
-                    <th scope="col">Department</th>
-                    <th scope="col">Priority</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Time</th>
-                    <th scope="col">Description</th>
+                    <th scope="col">Habitación</th>
+                    <th scope="col">Departamento</th>
+                    <th scope="col">Prioridad</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Hora</th>
+                    <th scope="col">Descripción</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -349,14 +355,14 @@ function App() {
             </div>
           </section>
 
-          <aside className="sidebar" aria-label="Department status">
+          <aside className="sidebar" aria-label="Estado de departamentos">
             <section className="panel dept-panel" aria-labelledby="dept-heading">
               <div className="panel__header">
                 <div>
                   <h2 id="dept-heading" className="panel__title">
-                    Departments
+                    Departamentos
                   </h2>
-                  <p className="panel__subtitle">Staff & channel status</p>
+                  <p className="panel__subtitle">Personal y canales</p>
                 </div>
               </div>
 
@@ -374,9 +380,9 @@ function App() {
               </div>
             </section>
 
-            <section className="panel feed-panel" aria-label="Activity feed">
+            <section className="panel feed-panel" aria-label="Actividad reciente">
               <div className="panel__header">
-                <h2 className="panel__title">Activity pulse</h2>
+                <h2 className="panel__title">Pulso de actividad</h2>
               </div>
               <ul className="activity-feed">
                 {guestActivity.map((item, index) => (
@@ -405,13 +411,13 @@ function App() {
       </main>
 
       <footer className="footer">
-        <span>Hotel Connect · Operations Dashboard</span>
+        <span>Hotel Connect · Panel de operaciones</span>
         <span className="footer__live">
           <span className="live-dot live-dot--sm">
             <span className="live-dot__ring" />
             <span className="live-dot__core" />
           </span>
-          Live monitoring
+          Monitorización en vivo
         </span>
       </footer>
     </div>
