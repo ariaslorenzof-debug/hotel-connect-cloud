@@ -276,7 +276,7 @@ export default function Dashboard() {
     }).length
 
     const fueraSla = incidencias.filter((inc) => {
-      if (!isPendiente(inc.estado) && !isEnProceso(inc.estado)) return false
+      if (!isPendiente(inc.estado)) return false
       return getElapsedMinutes(inc, now) > SLA_MINUTES
     }).length
 
