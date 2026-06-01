@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 
 type Incidencia = {
@@ -20,8 +20,12 @@ type Incidencia = {
   hotel_id: string | null
 }
 
-const SELECT_FIELDS =
-  'id, habitacion, tipo_incidencia, departamento, estado, prioridad, created_at, accepted_at, accepted_by, resolved_by, hora_resolucion, tiempo_respuesta_min, tiempo_resolucion_min, observaciones, trabajador_nombre, hotel_id'
+const DEPARTAMENTO_LABELS: Record<string, string> = {
+  housekeeping: 'Limpieza',
+  maintenance: 'Mantenimiento',
+  reception: 'Recepción',
+  security: 'Seguridad',
+}
 
 const TIPO_LABELS: Record<string, string> = {
   towels: 'Toallas',
@@ -32,12 +36,7 @@ const TIPO_LABELS: Record<string, string> = {
   noise: 'Ruido',
 }
 
-const DEPARTAMENTO_LABELS: Record<string, string> = {
-  housekeeping: 'Limpieza',
-  maintenance: 'Mantenimiento',
-  reception: 'Recepción',
-  security: 'Seguridad',
-}
+const SLA_MINUTES = 20
 
 function normalizeKey(value: string): string {
   return value.toLowerCase().trim().replace(/\s+/g, '_')
@@ -49,6 +48,10 @@ function departamentoLabel(departamento: string | null): string {
   return DEPARTAMENTO_LABELS[key] ?? departamento
 }
 
+function tipoLabel(tipo: string): string {
+  return TIPO_LABELS[tipo] ?? tipo
+}
+
 function isToday(iso: string): boolean {
   const date = new Date(iso)
   const now = new Date()
@@ -56,6 +59,14 @@ function isToday(iso: string): boolean {
     date.getFullYear() === now.getFullYear() &&
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate()
+  )
+}
+
+function isCurrentMonth(iso: string): boolean {
+  const date = new Date(iso)
+  const now = new Date()
+  return (
+    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
   )
 }
 
@@ -88,8 +99,18 @@ function isActiva(estado: string): boolean {
   return isPendiente(estado) || isEnProceso(estado) || isEscalada(estado)
 }
 
-function tipoLabel(tipo: string): string {
-  return TIPO_LABELS[tipo] ?? tipo
+function canResolve(estado: string): boolean {
+  return isPendiente(estado) || isEnProceso(estado)
+}
+
+function estadoLabel(estado: string): string {
+  const n = normalizeKey(estado)
+  if (n === 'open') return 'Abierta'
+  if (isEnProceso(estado)) return 'En proceso'
+  if (isResuelta(estado)) return 'Resuelta'
+  if (isEscalada(estado)) return 'Escalada'
+  if (n === 'pendiente') return 'Pendiente'
+  return estado
 }
 
 function getResolutionMinutes(inc: Incidencia): number | null {
@@ -104,6 +125,17 @@ function getResolutionMinutes(inc: Incidencia): number | null {
   return mins >= 0 ? mins : null
 }
 
+function getResponseMinutes(inc: Incidencia): number | null {
+  if (inc.tiempo_respuesta_min != null && inc.tiempo_respuesta_min >= 0) {
+    return inc.tiempo_respuesta_min
+  }
+  if (!inc.created_at || !inc.accepted_at) return null
+  const mins = Math.round(
+    (new Date(inc.accepted_at).getTime() - new Date(inc.created_at).getTime()) / 60000,
+  )
+  return mins >= 0 ? mins : null
+}
+
 function getElapsedMinutes(inc: Incidencia, now: Date): number {
   if (!inc.created_at) return 0
   const start = new Date(inc.created_at).getTime()
@@ -114,22 +146,76 @@ function getElapsedMinutes(inc: Incidencia, now: Date): number {
   return Math.max(0, Math.floor((end - start) / 60000))
 }
 
-function formatElapsed(minutes: number): string {
-  if (minutes < 1) return 'menos de 1 min'
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  const rem = minutes % 60
-  return rem > 0 ? `${hours} h ${rem} min` : `${hours} h`
+function average(values: number[]): number | null {
+  if (values.length === 0) return null
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length)
 }
 
-function estadoLabel(estado: string): string {
-  const n = normalizeKey(estado)
-  if (n === 'open') return 'Abierta'
-  if (isEnProceso(estado)) return 'En proceso'
-  if (isResuelta(estado)) return 'Resuelta'
-  if (isEscalada(estado)) return 'Escalada'
-  if (n === 'pendiente') return 'Pendiente'
-  return estado
+type KpiCardProps = {
+  label: string
+  value: string
+  accent: string
+  footnote?: string
+}
+
+function KpiCard({ label, value, accent, footnote }: KpiCardProps) {
+  return (
+    <article className="dash-card">
+      <div className="dash-card__bar" style={{ background: accent }} />
+      <p className="dash-card__label">{label}</p>
+      <p className="dash-card__value" style={{ color: accent }}>
+        {value}
+      </p>
+      {footnote ? <p className="dash-card__footnote">{footnote}</p> : null}
+    </article>
+  )
+}
+
+type RankRow = {
+  key: string
+  label: string
+  value: number
+  display: string
+}
+
+function RankBlock({
+  title,
+  rows,
+  footer,
+}: {
+  title: string
+  rows: RankRow[]
+  footer?: ReactNode
+}) {
+  const max = rows.length > 0 ? Math.max(...rows.map((r) => r.value), 1) : 1
+
+  return (
+    <article className="dash-panel">
+      <h2 className="dash-panel__title">{title}</h2>
+      {rows.length === 0 ? (
+        <p className="dash-muted">Sin datos disponibles.</p>
+      ) : (
+        <ul className="dash-bars">
+          {rows.map((row, i) => (
+            <li key={row.key} className="dash-bars__item">
+              <div className="dash-bars__head">
+                <span className="dash-bars__rank">{i + 1}.</span>
+                <span className="dash-bars__label">{row.label}</span>
+                <span className="dash-bars__value">{row.display}</span>
+              </div>
+              <div className="dash-bars__track">
+                <div
+                  className="dash-bars__fill"
+                  style={{ width: `${Math.max(8, (row.value / max) * 100)}%` }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {footer}
+    </article>
+  )
 }
 
 export default function Dashboard() {
@@ -141,7 +227,7 @@ export default function Dashboard() {
   const fetchIncidencias = useCallback(async () => {
     const { data, error } = await supabase
       .from('incidencias')
-      .select(SELECT_FIELDS)
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -167,36 +253,57 @@ export default function Dashboard() {
   const now = useMemo(() => new Date(), [tick, incidencias])
 
   const metrics = useMemo(() => {
-    const todayCreated = incidencias.filter(
-      (inc) => inc.created_at && isToday(inc.created_at),
+    const activas = incidencias.filter((inc) => isActiva(inc.estado))
+    const pendientes = incidencias.filter((inc) => isPendiente(inc.estado))
+    const resueltas = incidencias.filter((inc) => isResuelta(inc.estado))
+
+    const resueltasHoy = resueltas.filter(
+      (inc) => inc.hora_resolucion && isToday(inc.hora_resolucion),
     )
 
-    const resueltasHoy = incidencias.filter(
-      (inc) =>
-        isResuelta(inc.estado) &&
-        inc.hora_resolucion &&
-        isToday(inc.hora_resolucion),
-    )
+    const responseTimes = incidencias
+      .map(getResponseMinutes)
+      .filter((m): m is number => m !== null)
 
-    const resolvedWithTime = incidencias
+    const resolutionTimes = resueltas
       .map(getResolutionMinutes)
       .filter((m): m is number => m !== null)
 
-    const avgMinutes =
+    const reseñasProtegidas = resueltas.filter((inc) => {
+      if (!inc.hora_resolucion || !isCurrentMonth(inc.hora_resolucion)) return false
+      const mins = getResolutionMinutes(inc)
+      return mins !== null && mins < SLA_MINUTES
+    }).length
+
+    const fueraSla = incidencias.filter((inc) => {
+      if (!isPendiente(inc.estado) && !isEnProceso(inc.estado)) return false
+      return getElapsedMinutes(inc, now) > SLA_MINUTES
+    }).length
+
+    const resolvedWithTime = resueltas
+      .map(getResolutionMinutes)
+      .filter((m): m is number => m !== null)
+
+    const withinSla = resolvedWithTime.filter((m) => m < SLA_MINUTES).length
+    const dentroSlaPct =
       resolvedWithTime.length > 0
-        ? Math.round(
-            resolvedWithTime.reduce((a, b) => a + b, 0) / resolvedWithTime.length,
-          )
-        : null
+        ? Math.round((withinSla / resolvedWithTime.length) * 100)
+        : 0
+
+    const tiempoAhorradoHoras = Math.round(resueltas.length * 0.17 * 10) / 10
 
     return {
-      pendientes: incidencias.filter((inc) => isPendiente(inc.estado)).length,
-      enProceso: incidencias.filter((inc) => isEnProceso(inc.estado)).length,
+      activas: activas.length,
       resueltasHoy: resueltasHoy.length,
-      avgMinutes,
-      totalHoy: todayCreated.length,
+      pendientes: pendientes.length,
+      avgResponseMin: average(responseTimes),
+      reseñasProtegidas,
+      avgResolutionMin: average(resolutionTimes),
+      fueraSla,
+      dentroSlaPct,
+      tiempoAhorradoHoras,
     }
-  }, [incidencias])
+  }, [incidencias, now])
 
   const deptRanking = useMemo(() => {
     const map = new Map<string, { sum: number; count: number }>()
@@ -231,6 +338,20 @@ export default function Dashboard() {
       .slice(0, 8)
   }, [incidencias])
 
+  const deptRows: RankRow[] = deptRanking.map((row) => ({
+    key: row.departamento,
+    label: departamentoLabel(row.departamento),
+    value: row.avg,
+    display: `${row.avg} min`,
+  }))
+
+  const roomRows: RankRow[] = roomRanking.map((row) => ({
+    key: row.habitacion,
+    label: `Hab. ${row.habitacion}`,
+    value: row.count,
+    display: `${row.count} ${row.count === 1 ? 'incidencia' : 'incidencias'}`,
+  }))
+
   const tableRows = useMemo(() => {
     const activas = incidencias.filter((inc) => isActiva(inc.estado))
     const resto = incidencias.filter((inc) => !isActiva(inc.estado))
@@ -242,8 +363,9 @@ export default function Dashboard() {
     setResolvingId(inc.id)
 
     const nowIso = new Date().toISOString()
-    const tiempoResolucionMin = Math.round(
-      (Date.now() - new Date(inc.created_at).getTime()) / 60000,
+    const tiempoResolucionMin = Math.max(
+      0,
+      Math.round((Date.now() - new Date(inc.created_at).getTime()) / 60000),
     )
 
     const { error } = await supabase
@@ -251,7 +373,7 @@ export default function Dashboard() {
       .update({
         estado: 'resuelta',
         hora_resolucion: nowIso,
-        tiempo_resolucion_min: Math.max(0, tiempoResolucionMin),
+        tiempo_resolucion_min: tiempoResolucionMin,
       })
       .eq('id', inc.id)
 
@@ -263,6 +385,9 @@ export default function Dashboard() {
 
     setResolvingId(null)
   }
+
+  const fastestDept = deptRanking[0]
+  const slowestDept = deptRanking.length > 1 ? deptRanking[deptRanking.length - 1] : null
 
   return (
     <div className="dash">
@@ -282,7 +407,6 @@ export default function Dashboard() {
 
         .dash__title {
           margin: 0 0 0.35rem;
-          font-family: Georgia, 'Times New Roman', serif;
           font-size: clamp(1.75rem, 5vw, 2.5rem);
           font-weight: 400;
           color: rgba(200, 170, 100, 0.8);
@@ -295,39 +419,59 @@ export default function Dashboard() {
           color: rgba(255, 255, 255, 0.55);
         }
 
-        .dash__metrics {
+        .dash__row {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
           gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .dash__row--5 {
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+
+        .dash__row--4 {
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
           margin-bottom: 1.75rem;
         }
 
-        .dash__card {
-          background: rgba(20, 22, 28, 0.85);
-          border: 1px solid rgba(200, 170, 100, 0.1);
+        .dash-card {
+          position: relative;
+          overflow: hidden;
+          background: #111118;
+          border: 1px solid rgba(200, 170, 100, 0.09);
           border-radius: 12px;
-          padding: 1.15rem 1.25rem;
+          padding: 1.1rem 1.2rem 1.15rem;
         }
 
-        .dash__card-label {
-          margin: 0 0 0.45rem;
-          font-size: 0.68rem;
+        .dash-card__bar {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 2px;
+        }
+
+        .dash-card__label {
+          margin: 0.35rem 0 0.5rem;
+          font-size: 0.65rem;
           text-transform: uppercase;
-          letter-spacing: 0.08em;
+          letter-spacing: 0.09em;
           color: rgba(200, 170, 100, 0.8);
         }
 
-        .dash__card-value {
+        .dash-card__value {
           margin: 0;
-          font-size: clamp(1.65rem, 4vw, 2.1rem);
+          font-size: clamp(1.6rem, 4vw, 2rem);
           font-weight: 500;
+          line-height: 1.1;
         }
 
-        .dash__card-value--red { color: #f56565; }
-        .dash__card-value--gold { color: rgba(200, 170, 100, 0.95); }
-        .dash__card-value--green { color: #68d391; }
-        .dash__card-value--blue { color: #63b3ed; }
-        .dash__card-value--white { color: #fff; }
+        .dash-card__footnote {
+          margin: 0.65rem 0 0;
+          font-size: 0.68rem;
+          line-height: 1.35;
+          color: rgba(255, 255, 255, 0.42);
+        }
 
         .dash__panels {
           display: grid;
@@ -340,78 +484,119 @@ export default function Dashboard() {
           .dash__panels { grid-template-columns: 1fr 1fr; }
         }
 
-        .dash__panel {
-          background: rgba(20, 22, 28, 0.85);
-          border: 1px solid rgba(200, 170, 100, 0.1);
+        .dash-panel {
+          background: #111118;
+          border: 1px solid rgba(200, 170, 100, 0.09);
           border-radius: 12px;
           padding: 1.25rem 1.35rem;
         }
 
-        .dash__panel-title {
+        .dash-panel__title {
           margin: 0 0 1rem;
-          font-size: 1.1rem;
+          font-size: 1.05rem;
           font-weight: 400;
           color: rgba(200, 170, 100, 0.8);
         }
 
-        .dash__rank-list {
+        .dash-bars {
           list-style: none;
           margin: 0;
           padding: 0;
           display: flex;
           flex-direction: column;
-          gap: 0.55rem;
+          gap: 0.85rem;
         }
 
-        .dash__rank-item {
+        .dash-bars__head {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 0.75rem;
-          font-size: 0.9rem;
-          padding: 0.45rem 0;
-          border-bottom: 1px solid rgba(200, 170, 100, 0.08);
+          align-items: baseline;
+          gap: 0.35rem;
+          margin-bottom: 0.35rem;
+          font-size: 0.88rem;
         }
 
-        .dash__rank-item:last-child { border-bottom: none; }
+        .dash-bars__rank {
+          color: rgba(200, 170, 100, 0.65);
+          min-width: 1.25rem;
+        }
 
-        .dash__rank-name { color: rgba(255, 255, 255, 0.9); }
+        .dash-bars__label {
+          flex: 1;
+          color: rgba(255, 255, 255, 0.9);
+        }
 
-        .dash__rank-value {
+        .dash-bars__value {
           color: rgba(200, 170, 100, 0.8);
           white-space: nowrap;
+          font-size: 0.82rem;
+        }
+
+        .dash-bars__track {
+          height: 6px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.06);
+          overflow: hidden;
+        }
+
+        .dash-bars__fill {
+          height: 100%;
+          border-radius: 999px;
+          background: linear-gradient(
+            90deg,
+            rgba(200, 170, 100, 0.35),
+            rgba(200, 170, 100, 0.75)
+          );
+        }
+
+        .dash-panel__footer {
+          margin-top: 1rem;
+          padding-top: 0.85rem;
+          border-top: 1px solid rgba(200, 170, 100, 0.09);
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem 1.25rem;
+          font-size: 0.82rem;
+        }
+
+        .dash-panel__fast { color: #68d391; }
+        .dash-panel__slow { color: #f56565; }
+
+        .dash-muted {
+          color: rgba(255, 255, 255, 0.45);
+          font-size: 0.85rem;
+          margin: 0;
         }
 
         .dash__section-title {
           margin: 0 0 1rem;
-          font-size: 1.35rem;
+          font-size: 1.3rem;
           font-weight: 400;
-          color: rgba(255, 255, 255, 0.9);
+          color: rgba(255, 255, 255, 0.92);
         }
 
         .dash__table-wrap {
           overflow-x: auto;
-          border: 1px solid rgba(200, 170, 100, 0.1);
+          border: 1px solid rgba(200, 170, 100, 0.09);
           border-radius: 12px;
-          background: rgba(20, 22, 28, 0.85);
+          background: #111118;
         }
 
         .dash__table {
           width: 100%;
           border-collapse: collapse;
           font-size: 0.88rem;
-          min-width: 720px;
+          min-width: 760px;
         }
 
         .dash__table th {
           text-align: left;
           padding: 0.85rem 1rem;
-          font-size: 0.68rem;
+          font-size: 0.65rem;
           font-weight: 500;
           text-transform: uppercase;
-          letter-spacing: 0.07em;
+          letter-spacing: 0.08em;
           color: rgba(200, 170, 100, 0.8);
-          border-bottom: 1px solid rgba(200, 170, 100, 0.1);
+          border-bottom: 1px solid rgba(200, 170, 100, 0.09);
         }
 
         .dash__table td {
@@ -434,7 +619,6 @@ export default function Dashboard() {
           padding: 0.22rem 0.6rem;
           border-radius: 999px;
           font-size: 0.72rem;
-          text-transform: capitalize;
         }
 
         .dash__badge--pendiente {
@@ -447,6 +631,12 @@ export default function Dashboard() {
           background: rgba(200, 170, 100, 0.12);
           color: rgba(200, 170, 100, 0.95);
           border: 1px solid rgba(200, 170, 100, 0.35);
+        }
+
+        .dash__badge--escalada {
+          background: rgba(237, 137, 54, 0.12);
+          color: #ed8936;
+          border: 1px solid rgba(237, 137, 54, 0.35);
         }
 
         .dash__badge--resuelta {
@@ -483,8 +673,6 @@ export default function Dashboard() {
           padding: 2rem 1rem;
           color: rgba(255, 255, 255, 0.45);
         }
-
-        .dash__muted { color: rgba(255, 255, 255, 0.45); font-size: 0.85rem; }
       `}</style>
 
       <header className="dash__header">
@@ -492,69 +680,89 @@ export default function Dashboard() {
         <p className="dash__subtitle">Panel operativo de incidencias</p>
       </header>
 
-      <section className="dash__metrics" aria-label="Métricas">
-        <article className="dash__card">
-          <p className="dash__card-label">Pendientes</p>
-          <p className="dash__card-value dash__card-value--red">{metrics.pendientes}</p>
-        </article>
-        <article className="dash__card">
-          <p className="dash__card-label">En proceso</p>
-          <p className="dash__card-value dash__card-value--gold">{metrics.enProceso}</p>
-        </article>
-        <article className="dash__card">
-          <p className="dash__card-label">Resueltas hoy</p>
-          <p className="dash__card-value dash__card-value--green">{metrics.resueltasHoy}</p>
-        </article>
-        <article className="dash__card">
-          <p className="dash__card-label">Tiempo medio resolución</p>
-          <p className="dash__card-value dash__card-value--blue">
-            {metrics.avgMinutes !== null ? `${metrics.avgMinutes} min` : '—'}
-          </p>
-        </article>
-        <article className="dash__card">
-          <p className="dash__card-label">Total incidencias hoy</p>
-          <p className="dash__card-value dash__card-value--white">{metrics.totalHoy}</p>
-        </article>
+      <section className="dash__row dash__row--5" aria-label="Indicadores principales">
+        <KpiCard
+          label="Incidencias activas"
+          value={String(metrics.activas)}
+          accent="#f56565"
+        />
+        <KpiCard
+          label="Resueltas hoy"
+          value={String(metrics.resueltasHoy)}
+          accent="#68d391"
+        />
+        <KpiCard
+          label="Pendientes"
+          value={String(metrics.pendientes)}
+          accent="rgba(200, 170, 100, 0.95)"
+        />
+        <KpiCard
+          label="Tiempo medio de respuesta"
+          value={
+            metrics.avgResponseMin !== null ? `${metrics.avgResponseMin} min` : '—'
+          }
+          accent="#63b3ed"
+        />
+        <KpiCard
+          label="Reseñas protegidas este mes"
+          value={String(metrics.reseñasProtegidas)}
+          accent="#ecc94b"
+          footnote="Estimación basada en incidencias resueltas dentro del tiempo objetivo."
+        />
       </section>
 
-      <section className="dash__panels" aria-label="Clasificaciones">
-        <article className="dash__panel">
-          <h2 className="dash__panel-title">Departamentos — tiempo medio</h2>
-          {deptRanking.length === 0 ? (
-            <p className="dash__muted">Sin datos de resolución por departamento.</p>
-          ) : (
-            <ul className="dash__rank-list">
-              {deptRanking.map((row, i) => (
-                <li key={row.departamento} className="dash__rank-item">
-                  <span className="dash__rank-name">
-                    {i + 1}. {departamentoLabel(row.departamento)}
-                  </span>
-                  <span className="dash__rank-value">{row.avg} min</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
+      <section className="dash__row dash__row--4" aria-label="Indicadores SLA">
+        <KpiCard
+          label="Tiempo medio de resolución"
+          value={
+            metrics.avgResolutionMin !== null ? `${metrics.avgResolutionMin} min` : '—'
+          }
+          accent="#b794f4"
+        />
+        <KpiCard
+          label="Fuera de SLA"
+          value={String(metrics.fueraSla)}
+          accent="#f56565"
+        />
+        <KpiCard
+          label="Dentro de SLA"
+          value={`${metrics.dentroSlaPct}%`}
+          accent="#4fd1c5"
+        />
+        <KpiCard
+          label="Tiempo ahorrado a recepción"
+          value={`${metrics.tiempoAhorradoHoras} h`}
+          accent="#ed8936"
+        />
+      </section>
 
-        <article className="dash__panel">
-          <h2 className="dash__panel-title">Habitaciones — más incidencias</h2>
-          {roomRanking.length === 0 ? (
-            <p className="dash__muted">Sin incidencias registradas.</p>
-          ) : (
-            <ul className="dash__rank-list">
-              {roomRanking.map((row, i) => (
-                <li key={row.habitacion} className="dash__rank-item">
-                  <span className="dash__rank-name">
-                    {i + 1}. Hab. {row.habitacion}
+      <section className="dash__panels" aria-label="Rankings">
+        <RankBlock
+          title="Departamentos — tiempo medio de resolución"
+          rows={deptRows}
+          footer={
+            deptRanking.length > 0 ? (
+              <div className="dash-panel__footer">
+                {fastestDept ? (
+                  <span className="dash-panel__fast">
+                    Más rápido: {departamentoLabel(fastestDept.departamento)} (
+                    {fastestDept.avg} min)
                   </span>
-                  <span className="dash__rank-value">
-                    {row.count} {row.count === 1 ? 'incidencia' : 'incidencias'}
+                ) : null}
+                {slowestDept && slowestDept.departamento !== fastestDept?.departamento ? (
+                  <span className="dash-panel__slow">
+                    Más lento: {departamentoLabel(slowestDept.departamento)} (
+                    {slowestDept.avg} min)
                   </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
+                ) : null}
+              </div>
+            ) : undefined
+          }
+        />
+        <RankBlock
+          title="Habitaciones — más incidencias"
+          rows={roomRows}
+        />
       </section>
 
       <section aria-label="Incidencias">
@@ -582,13 +790,15 @@ export default function Dashboard() {
                 {tableRows.map((inc) => {
                   const elapsedMin = getElapsedMinutes(inc, now)
                   const active = isActiva(inc.estado)
-                  const over20 = active && elapsedMin > 20
+                  const over20 = active && elapsedMin > SLA_MINUTES
 
                   const badgeClass = isResuelta(inc.estado)
                     ? 'dash__badge--resuelta'
-                    : isEnProceso(inc.estado) || isEscalada(inc.estado)
+                    : isEnProceso(inc.estado)
                       ? 'dash__badge--proceso'
-                      : 'dash__badge--pendiente'
+                      : isEscalada(inc.estado)
+                        ? 'dash__badge--escalada'
+                        : 'dash__badge--pendiente'
 
                   return (
                     <tr key={inc.id}>
@@ -604,16 +814,12 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td>
-                        <span
-                          className={over20 ? 'dash__elapsed--alert' : undefined}
-                        >
-                          {inc.created_at
-                            ? formatElapsed(elapsedMin)
-                            : '—'}
+                        <span className={over20 ? 'dash__elapsed--alert' : undefined}>
+                          {inc.created_at ? `${elapsedMin} min` : '—'}
                         </span>
                       </td>
                       <td>
-                        {active ? (
+                        {canResolve(inc.estado) ? (
                           <button
                             type="button"
                             className="dash__btn"
