@@ -10,6 +10,7 @@ import {
   type Priority,
 } from './data/dashboard'
 import './App.css'
+import Dashboard from './Dashboard'
 
 const DEPARTMENT_LABELS: Record<DepartmentId, string> = {
   housekeeping: 'Housekeeping',
@@ -194,6 +195,7 @@ function IncidentRow({
 }
 
 function App() {
+  if (window.location.pathname === '/dashboard') return <Dashboard />
   const { incidents, isIncidentLive, getDepartmentNotificationForIncident } =
     useIncidents()
   const [now, setNow] = useState(() => new Date())
