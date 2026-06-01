@@ -32,6 +32,23 @@ const TIPO_LABELS: Record<string, string> = {
   noise: 'Ruido',
 }
 
+const DEPARTAMENTO_LABELS: Record<string, string> = {
+  housekeeping: 'Limpieza',
+  maintenance: 'Mantenimiento',
+  reception: 'Recepción',
+  security: 'Seguridad',
+}
+
+function normalizeKey(value: string): string {
+  return value.toLowerCase().trim().replace(/\s+/g, '_')
+}
+
+function departamentoLabel(departamento: string | null): string {
+  if (!departamento) return '—'
+  const key = normalizeKey(departamento)
+  return DEPARTAMENTO_LABELS[key] ?? departamento
+}
+
 function isToday(iso: string): boolean {
   const date = new Date(iso)
   const now = new Date()
@@ -43,20 +60,32 @@ function isToday(iso: string): boolean {
 }
 
 function isPendiente(estado: string): boolean {
-  return estado === 'pendiente'
+  const n = normalizeKey(estado)
+  return n === 'pendiente' || n === 'open'
 }
 
 function isEnProceso(estado: string): boolean {
-  const n = estado.toLowerCase().trim()
-  return n === 'en proceso' || n === 'en_proceso' || n === 'proceso'
+  const n = normalizeKey(estado)
+  return (
+    n === 'en_proceso' ||
+    n === 'proceso' ||
+    n === 'in_progress' ||
+    estado.toLowerCase().trim() === 'en proceso'
+  )
 }
 
 function isResuelta(estado: string): boolean {
-  return estado === 'resuelta'
+  const n = normalizeKey(estado)
+  return n === 'resuelta' || n === 'resolved'
+}
+
+function isEscalada(estado: string): boolean {
+  const n = normalizeKey(estado)
+  return n === 'escalated' || n === 'escalada'
 }
 
 function isActiva(estado: string): boolean {
-  return isPendiente(estado) || isEnProceso(estado)
+  return isPendiente(estado) || isEnProceso(estado) || isEscalada(estado)
 }
 
 function tipoLabel(tipo: string): string {
@@ -86,17 +115,20 @@ function getElapsedMinutes(inc: Incidencia, now: Date): number {
 }
 
 function formatElapsed(minutes: number): string {
-  if (minutes < 1) return '< 1 min'
+  if (minutes < 1) return 'menos de 1 min'
   if (minutes < 60) return `${minutes} min`
   const hours = Math.floor(minutes / 60)
   const rem = minutes % 60
-  return rem > 0 ? `${hours}h ${rem}m` : `${hours}h`
+  return rem > 0 ? `${hours} h ${rem} min` : `${hours} h`
 }
 
 function estadoLabel(estado: string): string {
+  const n = normalizeKey(estado)
+  if (n === 'open') return 'Abierta'
   if (isEnProceso(estado)) return 'En proceso'
-  if (isPendiente(estado)) return 'Pendiente'
   if (isResuelta(estado)) return 'Resuelta'
+  if (isEscalada(estado)) return 'Escalada'
+  if (n === 'pendiente') return 'Pendiente'
   return estado
 }
 
@@ -495,7 +527,7 @@ export default function Dashboard() {
               {deptRanking.map((row, i) => (
                 <li key={row.departamento} className="dash__rank-item">
                   <span className="dash__rank-name">
-                    {i + 1}. {row.departamento}
+                    {i + 1}. {departamentoLabel(row.departamento)}
                   </span>
                   <span className="dash__rank-value">{row.avg} min</span>
                 </li>
@@ -515,7 +547,9 @@ export default function Dashboard() {
                   <span className="dash__rank-name">
                     {i + 1}. Hab. {row.habitacion}
                   </span>
-                  <span className="dash__rank-value">{row.count}</span>
+                  <span className="dash__rank-value">
+                    {row.count} {row.count === 1 ? 'incidencia' : 'incidencias'}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -552,7 +586,7 @@ export default function Dashboard() {
 
                   const badgeClass = isResuelta(inc.estado)
                     ? 'dash__badge--resuelta'
-                    : isEnProceso(inc.estado)
+                    : isEnProceso(inc.estado) || isEscalada(inc.estado)
                       ? 'dash__badge--proceso'
                       : 'dash__badge--pendiente'
 
@@ -562,7 +596,7 @@ export default function Dashboard() {
                         <span className="dash__room">{inc.habitacion}</span>
                       </td>
                       <td>{tipoLabel(inc.tipo_incidencia)}</td>
-                      <td>{inc.departamento ?? '—'}</td>
+                      <td>{departamentoLabel(inc.departamento)}</td>
                       <td>{inc.trabajador_nombre ?? '—'}</td>
                       <td>
                         <span className={`dash__badge ${badgeClass}`}>
